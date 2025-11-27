@@ -2,7 +2,9 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { Calendar, TrendingUp, Sprout, User, Award, Heart, Wind, Brain, Sparkles, Star, Flame, Check } from 'lucide-react';
 
-
+// =============================================
+// CONSTANTS
+// =============================================
 
 const MOODS = {
   joyful: { emoji: '😊', color: 'bg-yellow-100 border-yellow-300', label: 'Joyful' },
@@ -51,13 +53,34 @@ const EXERCISES = {
 };
 
 // =============================================
-// STORAGE CONTEXT & HOOKS
+// STORAGE / CONTEXT
 // =============================================
 
-const DataContext = createContext();
+// create proper context type
+type StorageContextType = ReturnType<typeof useStorage>;
+
+// ⭐ FIX: Provide default null to avoid TS error
+const DataContext = createContext<StorageContextType | null>(null);
+
+type BloomData = {
+  moods: any[];
+  gratitudes: any[];
+  exercises: any[];
+  profile: {
+    name: string;
+    streakCount: number;
+    lastCheckIn: string | null;
+    preferences: {
+      reminderTime: string;
+      notificationsEnabled: boolean;
+    };
+    achievements: string[];
+  };
+};
+
 
 const useStorage = () => {
-  const [data, setData] = useState({
+  const [data, setData] = useState<BloomData>({
     moods: [],
     gratitudes: [],
     exercises: [],
@@ -65,9 +88,12 @@ const useStorage = () => {
       name: '',
       streakCount: 0,
       lastCheckIn: null,
-      preferences: { reminderTime: '20:00', notificationsEnabled: false },
-      achievements: []
-    }
+      preferences: {
+        reminderTime: '09:00',
+        notificationsEnabled: true,
+      },
+      achievements: [],
+    },
   });
 
   useEffect(() => {
@@ -77,12 +103,12 @@ const useStorage = () => {
     }
   }, []);
 
-  const saveData = (newData) => {
+  const saveData = (newData: BloomData) => {
     setData(newData);
     localStorage.setItem('bloomData', JSON.stringify(newData));
   };
 
-  const addMood = (mood, reflection) => {
+  const addMood = (mood: string, reflection: string) => {
     const entry = {
       id: Date.now().toString(),
       timestamp: new Date().toISOString(),
@@ -94,7 +120,7 @@ const useStorage = () => {
     saveData(newData);
   };
 
-  const addGratitude = (items) => {
+  const addGratitude = (items: string[]) => {
     const entry = {
       id: Date.now().toString(),
       timestamp: new Date().toISOString(),
@@ -103,7 +129,7 @@ const useStorage = () => {
     saveData({ ...data, gratitudes: [entry, ...data.gratitudes] });
   };
 
-  const completeExercise = (exerciseType, helpfulness) => {
+  const completeExercise = (exerciseType: string, helpfulness: number) => {
     const entry = {
       id: Date.now().toString(),
       timestamp: new Date().toISOString(),
@@ -115,7 +141,7 @@ const useStorage = () => {
     saveData(newData);
   };
 
-  const updateStreak = (newData) => {
+  const updateStreak = (newData: BloomData) => {
     const today = new Date().toDateString();
     const lastCheckIn = newData.profile.lastCheckIn ? new Date(newData.profile.lastCheckIn).toDateString() : null;
     
@@ -130,7 +156,7 @@ const useStorage = () => {
     newData.profile.lastCheckIn = new Date().toISOString();
   };
 
-  const checkAchievements = (newData) => {
+  const checkAchievements = (newData: BloomData) => {
     const achievements = newData.profile.achievements;
     if (newData.profile.streakCount >= 7 && !achievements.includes('week')) {
       achievements.push('week');
@@ -147,31 +173,15 @@ const useStorage = () => {
 // COMPONENTS
 // =============================================
 
-const WelcomeScreen = ({ onComplete }) => {
+const WelcomeScreen = ({ onComplete }: { onComplete: (name: string) => void }) => {
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
 
   const steps = [
-    {
-      title: 'Welcome to Bloom',
-      subtitle: 'Your daily companion for mental wellness',
-      content: 'Build tiny habits that help you flourish. Just 60 seconds a day.'
-    },
-    {
-      title: 'Track Your Moods',
-      subtitle: 'Understand your emotional patterns',
-      content: 'Quick check-ins help you notice trends and triggers.'
-    },
-    {
-      title: 'Practice Gratitude',
-      subtitle: 'Rewire your brain for positivity',
-      content: 'Three tiny wins each day shift your perspective.'
-    },
-    {
-      title: 'Personalized Exercises',
-      subtitle: 'Micro-interventions when you need them',
-      content: 'Breathing, grounding, and reframing techniques tailored to you.'
-    }
+    { title: 'Welcome to Bloom', subtitle: 'Your daily companion for mental wellness', content: 'Build tiny habits that help you flourish. Just 60 seconds a day.' },
+    { title: 'Track Your Moods', subtitle: 'Understand your emotional patterns', content: 'Quick check-ins help you notice trends and triggers.' },
+    { title: 'Practice Gratitude', subtitle: 'Rewire your brain for positivity', content: 'Three tiny wins each day shift your perspective.' },
+    { title: 'Personalized Exercises', subtitle: 'Micro-interventions when you need them', content: 'Breathing, grounding, and reframing techniques tailored to you.' }
   ];
 
   return (
@@ -225,18 +235,22 @@ const WelcomeScreen = ({ onComplete }) => {
   );
 };
 
-const MoodPicker = ({ onSelect }) => {
-  const [selected, setSelected] = useState(null);
+
+
+const MoodPicker = ({ onSelect }: { onSelect: (mood: string, reflection: string) => void }) => {
+  const [selected, setSelected] = useState<string | null>(null);
   const [reflection, setReflection] = useState('');
   const [showReflection, setShowReflection] = useState(false);
 
-  const handleMoodClick = (mood) => {
+  const handleMoodClick = (mood: string) => {
     setSelected(mood);
     setShowReflection(true);
   };
 
   const handleSubmit = () => {
-    onSelect(selected, reflection);
+    if (selected) {
+      onSelect(selected, reflection);
+    }
   };
 
   return (
@@ -261,8 +275,8 @@ const MoodPicker = ({ onSelect }) => {
       ) : (
         <>
           <div className="text-center mb-6">
-            <div className="text-6xl mb-3 animate-bounce">{MOODS[selected].emoji}</div>
-            <h3 className="text-xl font-semibold text-gray-800">Feeling {MOODS[selected].label}</h3>
+            <div className="text-6xl mb-3 animate-bounce">{MOODS[selected as keyof typeof MOODS].emoji}</div>
+            <h3 className="text-xl font-semibold text-gray-800">Feeling {MOODS[selected as keyof typeof MOODS].label}</h3>
           </div>
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -273,7 +287,7 @@ const MoodPicker = ({ onSelect }) => {
               onChange={(e) => setReflection(e.target.value)}
               placeholder="What's on your mind?"
               className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors resize-none"
-              rows="3"
+              rows={3}
             />
           </div>
           <div className="flex gap-3">
@@ -296,10 +310,10 @@ const MoodPicker = ({ onSelect }) => {
   );
 };
 
-const GratitudeJournal = ({ onComplete }) => {
+const GratitudeJournal = ({ onComplete }: { onComplete: (items: string[]) => void }) => {
   const [items, setItems] = useState(['', '', '']);
 
-  const updateItem = (index, value) => {
+  const updateItem = (index: number, value: string) => {
     const newItems = [...items];
     newItems[index] = value;
     setItems(newItems);
@@ -336,7 +350,7 @@ const GratitudeJournal = ({ onComplete }) => {
   );
 };
 
-const ExerciseView = ({ exercise, onComplete }) => {
+const ExerciseView = ({ exercise, onComplete }: { exercise: any; onComplete: (exerciseId: string, rating: number) => void }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const Icon = exercise.icon;
@@ -349,7 +363,7 @@ const ExerciseView = ({ exercise, onComplete }) => {
     }
   };
 
-  const handleRate = (rating) => {
+  const handleRate = (rating: number) => {
     onComplete(exercise.id, rating);
   };
 
@@ -390,7 +404,7 @@ const ExerciseView = ({ exercise, onComplete }) => {
       </div>
 
       <div className="flex gap-2 mb-4">
-        {exercise.steps.map((_, i) => (
+        {exercise.steps.map((_: string, i: number) => (
           <div key={i} className={`h-2 flex-1 rounded-full ${i <= currentStep ? 'bg-purple-500' : 'bg-gray-200'}`} />
         ))}
       </div>
@@ -405,7 +419,7 @@ const ExerciseView = ({ exercise, onComplete }) => {
   );
 };
 
-const HomeView = ({ data, onStartCheckIn }) => {
+const HomeView = ({ data, onStartCheckIn }: { data: BloomData; onStartCheckIn: () => void }) => {
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
@@ -494,10 +508,10 @@ const HomeView = ({ data, onStartCheckIn }) => {
   );
 };
 
-const InsightsView = ({ data }) => {
+const InsightsView = ({ data }: { data: BloomData }) => {
   const getMoodCounts = () => {
-    const counts = {};
-    data.moods.forEach(m => {
+    const counts: Record<string, number> = {};
+    data.moods.forEach((m: any) => {
       counts[m.mood] = (counts[m.mood] || 0) + 1;
     });
     return counts;
@@ -505,10 +519,10 @@ const InsightsView = ({ data }) => {
 
   const getTopMood = () => {
     const counts = getMoodCounts();
-    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0] || ['neutral', 0];
+    return (Object.entries(counts).sort((a, b) => b[1] - a[1])[0] as [string, number]) || ['neutral', 0];
   };
 
-  const [topMood, topCount] = getTopMood();
+  const [topMood] = getTopMood();
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -519,18 +533,18 @@ const InsightsView = ({ data }) => {
         <h3 className="text-xl font-semibold mb-2">Mood Patterns</h3>
         <p className="text-blue-50">
           You've checked in {data.moods.length} times. 
-          {topMood && ` Most common mood: ${MOODS[topMood].label} ${MOODS[topMood].emoji}`}
+          {topMood && ` Most common mood: ${MOODS[topMood as keyof typeof MOODS].label} ${MOODS[topMood as keyof typeof MOODS].emoji}`}
         </p>
       </div>
 
       <div className="bg-white rounded-2xl border-2 border-gray-200 p-6">
         <h3 className="text-lg font-bold text-gray-800 mb-4">Mood Distribution</h3>
-        {Object.entries(getMoodCounts()).map(([mood, count]) => (
+        {Object.entries(getMoodCounts()).map(([mood, count]: [string, number]) => (
           <div key={mood} className="mb-3">
             <div className="flex items-center justify-between mb-1">
               <span className="flex items-center gap-2">
-                <span className="text-2xl">{MOODS[mood].emoji}</span>
-                <span className="text-sm font-medium text-gray-700">{MOODS[mood].label}</span>
+                <span className="text-2xl">{MOODS[mood as keyof typeof MOODS].emoji}</span>
+                <span className="text-sm font-medium text-gray-700">{MOODS[mood as keyof typeof MOODS].label}</span>
               </span>
               <span className="text-sm text-gray-500">{count}</span>
             </div>
@@ -550,12 +564,12 @@ const InsightsView = ({ data }) => {
           Gratitude Journal
         </h3>
         <p className="text-gray-600 mb-4">{data.gratitudes.length} entries recorded</p>
-        {data.gratitudes.slice(0, 3).map((g, i) => (
+        {data.gratitudes.slice(0, 3).map((g: any) => (
           <div key={g.id} className="mb-3 pb-3 border-b border-pink-100 last:border-0">
             <p className="text-sm text-gray-500 mb-1">
               {new Date(g.timestamp).toLocaleDateString()}
             </p>
-            {g.items.map((item, j) => (
+            {g.items.map((item: string, j: number) => (
               <p key={j} className="text-gray-700">• {item}</p>
             ))}
           </div>
@@ -565,7 +579,7 @@ const InsightsView = ({ data }) => {
   );
 };
 
-const GardenView = ({ data }) => {
+const GardenView = ({ data }: { data: BloomData }) => {
   const achievements = [
     { id: 'first', title: 'First Bloom', desc: 'Complete your first check-in', icon: '🌱', unlocked: data.moods.length >= 1 },
     { id: 'week', title: 'Week Warrior', desc: '7 day streak', icon: '🌿', unlocked: data.profile.streakCount >= 7 },
@@ -628,7 +642,7 @@ const GardenView = ({ data }) => {
 const App = () => {
   const storage = useStorage();
   const [view, setView] = useState('home');
-  const [checkInFlow, setCheckInFlow] = useState(null);
+  const [checkInFlow, setCheckInFlow] = useState<'mood' | 'gratitude' | 'exercise' | 'celebration' | null>(null);
   const [showWelcome, setShowWelcome] = useState(true);
 
   useEffect(() => {
@@ -637,7 +651,7 @@ const App = () => {
     }
   }, [storage.data]);
 
-  const handleWelcomeComplete = (name) => {
+  const handleWelcomeComplete = (name: string) => {
     const newData = { ...storage.data };
     newData.profile.name = name;
     storage.saveData(newData);
@@ -648,19 +662,19 @@ const App = () => {
     setCheckInFlow('mood');
   };
 
-  const handleMoodComplete = (mood, reflection) => {
+  const handleMoodComplete = (mood: string, reflection: string) => {
     storage.addMood(mood, reflection);
     setCheckInFlow('gratitude');
   };
 
-  const handleGratitudeComplete = (items) => {
+  const handleGratitudeComplete = (items: string[]) => {
     if (items.length > 0) {
       storage.addGratitude(items);
     }
     setCheckInFlow('exercise');
   };
 
-  const handleExerciseComplete = (exerciseType, helpfulness) => {
+  const handleExerciseComplete = (exerciseType: string, helpfulness: number) => {
     storage.completeExercise(exerciseType, helpfulness);
     setCheckInFlow('celebration');
   };
@@ -687,14 +701,11 @@ const App = () => {
     <DataContext.Provider value={storage}>
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50">
         <div className="max-w-md mx-auto min-h-screen flex flex-col">
+
           {/* Main Content */}
           <div className="flex-1 p-6 pb-24">
-            {checkInFlow === 'mood' && (
-              <MoodPicker onSelect={handleMoodComplete} />
-            )}
-            {checkInFlow === 'gratitude' && (
-              <GratitudeJournal onComplete={handleGratitudeComplete} />
-            )}
+            {checkInFlow === 'mood' && <MoodPicker onSelect={handleMoodComplete} />}
+            {checkInFlow === 'gratitude' && <GratitudeJournal onComplete={handleGratitudeComplete} />}
             {checkInFlow === 'exercise' && (
               <ExerciseView exercise={recommendExercise()} onComplete={handleExerciseComplete} />
             )}
@@ -716,6 +727,7 @@ const App = () => {
                 </button>
               </div>
             )}
+
             {!checkInFlow && view === 'home' && (
               <HomeView data={storage.data} onStartCheckIn={startCheckIn} />
             )}
@@ -731,6 +743,7 @@ const App = () => {
           {!checkInFlow && (
             <nav className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 px-6 py-4 max-w-md mx-auto">
               <div className="flex justify-around items-center">
+
                 <button
                   onClick={() => setView('home')}
                   className={`flex flex-col items-center gap-1 transition-all ${
@@ -740,6 +753,7 @@ const App = () => {
                   <Calendar className="w-6 h-6" />
                   <span className="text-xs font-medium">Today</span>
                 </button>
+
                 <button
                   onClick={() => setView('insights')}
                   className={`flex flex-col items-center gap-1 transition-all ${
@@ -749,6 +763,7 @@ const App = () => {
                   <TrendingUp className="w-6 h-6" />
                   <span className="text-xs font-medium">Insights</span>
                 </button>
+
                 <button
                   onClick={() => setView('garden')}
                   className={`flex flex-col items-center gap-1 transition-all ${
@@ -758,6 +773,7 @@ const App = () => {
                   <Sprout className="w-6 h-6" />
                   <span className="text-xs font-medium">Garden</span>
                 </button>
+
               </div>
             </nav>
           )}
